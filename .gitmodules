@@ -1,0 +1,6 @@
+[submodule "RE-UE4SS"]
+	path = RE-UE4SS
+	url = https://github.com/Nebulaetrix/RE-UE4SS.git
+[submodule "TyrModPackager"]
+	path = TyrModPackager
+	url = https://github.com/Nebulaetrix/TyrModPackager.git
