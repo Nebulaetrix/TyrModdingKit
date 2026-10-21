@@ -14,7 +14,6 @@
 #include <Mod/CppUserModBase.hpp>
 #include <DynamicOutput/DynamicOutput.hpp>
 #include <Unreal/UObject.hpp>
-#include <Unreal/UObjectGlobals.hpp>
 #include <Unreal/UAssetRegistry.hpp>
 #include <Unreal/UAssetRegistryHelpers.hpp>
 #include <Unreal/NameTypes.hpp>
