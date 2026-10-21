@@ -1,0 +1,52 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest   # self-hosted if UE4SS can't build on GitHub's runners
+    timeout-minutes: 90
+    env:
+      VERSION: ${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          token: ${{ secrets.SUBMODULE_TOKEN || github.token }}
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Install Ninja
+        run: choco install ninja -y --no-progress
+
+      - name: Configure
+        run: >
+          cmake -S . -B build -G Ninja
+          -DCMAKE_BUILD_TYPE=Game__Dev__Win64
+          -DGAME_MODS_DIR="$env:GITHUB_WORKSPACE/stage/Win64/ue4ss/Mods"
+          -DGAME_EXE_DIR="$env:GITHUB_WORKSPACE/stage/Win64"
+
+      - name: Build
+        run: cmake --build build --target ModdingAPI SkinBrowser SignatureBypass Packager
+
+      - name: Package
+        run: |
+          Copy-Item build/stage/Packager stage/Packager -Recurse
+          Compress-Archive -Path stage/* -DestinationPath "TyrModdingKit-$env:VERSION.zip"
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >
+          gh release create "$env:VERSION" "TyrModdingKit-$env:VERSION.zip"
+          --title "$env:VERSION" --generate-notes
