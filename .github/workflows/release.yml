@@ -13,7 +13,7 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 90
     env:
-      VERSION: ${{ github.ref_name }}
+      RELEASE_VERSION: ${{ github.ref_name }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -29,9 +29,10 @@ jobs:
           $proj = "TyrModPackager/UnrealReZen/UnrealReZen.csproj"
           Get-Content $proj
           dotnet --info | Select-String "Version|RID"
-          dotnet restore $proj -r win-x64 -v n > restore.log 2>&1
+          Get-ChildItem TyrModPackager -Recurse -Directory -Include obj,bin -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force
+          dotnet restore $proj -r win-x64 --force -p:NuGetAudit=false -v d > restore.log 2>&1
           $code = $LASTEXITCODE
-          Select-String -Path restore.log -Pattern "error |NU[0-9]{4}|NETSDK[0-9]|Failed to restore|downgrade|conflict" | Where-Object { $_.Line -notmatch "Pruning|prunable|MSB4276|Property reassignment" } | Select-Object -First 40 | ForEach-Object { $_.Line }
+          Select-String -Path restore.log -Pattern "Failed to restore" -Context 60,0 | ForEach-Object { $_.Context.PreContext + $_.Line } | Where-Object { $_ -notmatch "Pruning|prunable|MSB4276" } | Select-Object -Last 40
           if ($code -ne 0) { exit $code }
           dotnet publish $proj -c Release -r win-x64 --self-contained --no-restore -p:NuGetAudit=false -o build-packager
           Copy-Item packager-deps/* build-packager -Recurse -Force
@@ -55,11 +56,11 @@ jobs:
       - name: Package
         run: |
           Copy-Item build-packager stage/TyrModPackager -Recurse
-          Compress-Archive -Path stage/* -DestinationPath "TyrModdingKit-$env:VERSION.zip"
+          Compress-Archive -Path stage/* -DestinationPath "TyrModdingKit-$env:RELEASE_VERSION.zip"
 
       - name: Create release
         env:
           GH_TOKEN: ${{ github.token }}
         run: >
-          gh release create "$env:VERSION" "TyrModdingKit-$env:VERSION.zip"
-          --title "$env:VERSION" --generate-notes
+          gh release create "$env:RELEASE_VERSION" "TyrModdingKit-$env:RELEASE_VERSION.zip"
+          --title "$env:RELEASE_VERSION" --generate-notes
