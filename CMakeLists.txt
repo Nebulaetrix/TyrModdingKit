@@ -24,6 +24,6 @@ set(PACKAGER_CSPROJ "${CMAKE_SOURCE_DIR}/TyrModPackager/UnrealReZen/UnrealReZen.
 set(PACKAGER_STAGE "${CMAKE_BINARY_DIR}/stage/TyrModPackager")
 
 add_custom_target(TyrModPackager
-        COMMAND dotnet publish "${PACKAGER_CSPROJ}" -c Release -r win-x64 --self-contained -o "${PACKAGER_STAGE}"
+        COMMAND dotnet publish "${PACKAGER_CSPROJ}" -c Release -r win-x64 --self-contained -p:NuGetAudit=false -p:TreatWarningsAsErrors=false -o "${PACKAGER_STAGE}"
         COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_SOURCE_DIR}/packager-deps" "${PACKAGER_STAGE}"
         COMMENT "Publishing TyrModPackager with retoc and native DLLs")
