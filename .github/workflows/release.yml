@@ -18,6 +18,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
+          fetch-depth: 0
           token: ${{ secrets.SUBMODULE_TOKEN || github.token }}
 
       - uses: actions/setup-dotnet@v4
@@ -27,15 +28,11 @@ jobs:
       - name: Build packager
         run: |
           $proj = "TyrModPackager/UnrealReZen/UnrealReZen.csproj"
-          Get-Content $proj
-          dotnet --info | Select-String "Version|RID"
-          Get-ChildItem TyrModPackager -Recurse -Directory -Include obj,bin -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force
-          dotnet restore $proj -r win-x64 --force -p:NuGetAudit=false -v d > restore.log 2>&1
-          $code = $LASTEXITCODE
-          Select-String -Path restore.log -Pattern "Failed to restore" -Context 60,0 | ForEach-Object { $_.Context.PreContext + $_.Line } | Where-Object { $_ -notmatch "Pruning|prunable|MSB4276" } | Select-Object -Last 40
-          if ($code -ne 0) { exit $code }
-          dotnet publish $proj -c Release -r win-x64 --self-contained --no-restore -p:NuGetAudit=false -o build-packager
+          dotnet publish $proj -c Release -r win-x64 --self-contained `
+            -p:PublishSingleFile=true -p:DebugType=none -p:DebugSymbols=false -p:NuGetAudit=false `
+            -o build-packager
           Copy-Item packager-deps/* build-packager -Recurse -Force
+          Get-ChildItem build-packager -Recurse | Select-Object -ExpandProperty FullName
 
       - uses: ilammy/msvc-dev-cmd@v1
 
@@ -56,11 +53,38 @@ jobs:
       - name: Package
         run: |
           Copy-Item build-packager stage/TyrModPackager -Recurse
+          Copy-Item asi-loader/winhttp.dll stage/Win64/winhttp.dll
           Compress-Archive -Path stage/* -DestinationPath "TyrModdingKit-$env:RELEASE_VERSION.zip"
+
+      - name: Changelog
+        run: |
+          $prev = git describe --tags --abbrev=0 "$env:RELEASE_VERSION^" 2>$null
+          if ($LASTEXITCODE -eq 0 -and $prev) { $range = "$prev..$env:RELEASE_VERSION" } else { $range = $env:RELEASE_VERSION }
+          $lines = git log $range --no-merges --pretty=format:"- %s"
+          if (-not $lines) { $lines = "- No changes listed." }
+          $lines | Set-Content changelog.md -Encoding utf8
 
       - name: Create release
         env:
           GH_TOKEN: ${{ github.token }}
         run: >
           gh release create "$env:RELEASE_VERSION" "TyrModdingKit-$env:RELEASE_VERSION.zip"
-          --title "$env:RELEASE_VERSION" --generate-notes
+          --title "$env:RELEASE_VERSION" --notes-file changelog.md
+
+      - name: Notify Discord
+        env:
+          WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          if (-not $env:WEBHOOK) { Write-Host "No webhook secret set, skipping."; exit 0 }
+          $notes = (Get-Content changelog.md -Raw)
+          if ($notes.Length -gt 3500) { $notes = $notes.Substring(0, 3500) + "`n..." }
+          $url = "${{ github.server_url }}/${{ github.repository }}/releases/tag/$env:RELEASE_VERSION"
+          $body = @{
+            embeds = @(@{
+              title = "TyrModdingKit $env:RELEASE_VERSION"
+              url = $url
+              description = $notes
+              color = 5793266
+            })
+          } | ConvertTo-Json -Depth 5
+          Invoke-RestMethod -Uri $env:WEBHOOK -Method Post -ContentType "application/json; charset=utf-8" -Body ([System.Text.Encoding]::UTF8.GetBytes($body))
