@@ -26,8 +26,14 @@ jobs:
 
       - name: Build packager
         run: |
-          dotnet restore TyrModPackager/UnrealReZen/UnrealReZen.csproj -r win-x64 -v n
-          dotnet publish TyrModPackager/UnrealReZen/UnrealReZen.csproj -c Release -r win-x64 --self-contained --no-restore -p:NuGetAudit=false -o build-packager
+          $proj = "TyrModPackager/UnrealReZen/UnrealReZen.csproj"
+          Get-Content $proj
+          dotnet --info | Select-String "Version|RID"
+          dotnet restore $proj -r win-x64 -v d > restore.log 2>&1
+          $code = $LASTEXITCODE
+          Select-String -Path restore.log -Pattern "error|NU[0-9]{4}|NETSDK|Unable|failed|Failed" | Select-Object -First 40 | ForEach-Object { $_.Line }
+          if ($code -ne 0) { exit $code }
+          dotnet publish $proj -c Release -r win-x64 --self-contained --no-restore -p:NuGetAudit=false -o build-packager
           Copy-Item packager-deps/* build-packager -Recurse -Force
 
       - uses: ilammy/msvc-dev-cmd@v1
