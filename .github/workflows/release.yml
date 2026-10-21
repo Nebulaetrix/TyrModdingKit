@@ -37,11 +37,11 @@ jobs:
           -DGAME_EXE_DIR="$env:GITHUB_WORKSPACE/stage/Win64"
 
       - name: Build
-        run: cmake --build build --target ModdingAPI SkinBrowser SignatureBypass Packager
+        run: cmake --build build --target ModdingAPI SkinBrowser SignatureBypass TyrModPackager
 
       - name: Package
         run: |
-          Copy-Item build/stage/Packager stage/Packager -Recurse
+          Copy-Item build/stage/TyrModPackager stage/TyrModPackager -Recurse
           Compress-Archive -Path stage/* -DestinationPath "TyrModdingKit-$env:VERSION.zip"
 
       - name: Create release
