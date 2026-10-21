@@ -1,0 +1,29 @@
+name: Packager test
+
+on:
+  workflow_dispatch:
+    inputs:
+      dotnet-version:
+        description: "SDK version, e.g. 10.0.100 or 10.0.x"
+        default: "10.0.x"
+
+jobs:
+  packager:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: false
+
+      - name: Checkout packager submodules only
+        run: git submodule update --init --recursive TyrModPackager
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ inputs.dotnet-version }}
+
+      - name: Build packager
+        run: |
+          dotnet --version
+          dotnet publish TyrModPackager/UnrealReZen/UnrealReZen.csproj -c Release -r win-x64 --self-contained -o build-packager
