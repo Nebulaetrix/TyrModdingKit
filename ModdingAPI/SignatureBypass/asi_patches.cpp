@@ -317,4 +317,5 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID)
         MainThread(nullptr);
     }
     return TRUE;
+
 }
