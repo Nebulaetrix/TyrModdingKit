@@ -24,24 +24,31 @@ jobs:
         with:
           dotnet-version: 10.0.x
 
+      - name: Build packager
+        run: |
+          dotnet restore TyrModPackager/UnrealReZen/UnrealReZen.csproj -r win-x64 -v n
+          dotnet publish TyrModPackager/UnrealReZen/UnrealReZen.csproj -c Release -r win-x64 --self-contained --no-restore -p:NuGetAudit=false -o build-packager
+          Copy-Item packager-deps/* build-packager -Recurse -Force
+
       - uses: ilammy/msvc-dev-cmd@v1
 
       - name: Install Ninja
         run: choco install ninja -y --no-progress
 
       - name: Configure
-        run: >
-          cmake -S . -B build -G Ninja
-          -DCMAKE_BUILD_TYPE=Game__Dev__Win64
-          -DGAME_MODS_DIR="$env:GITHUB_WORKSPACE/stage/Win64/ue4ss/Mods"
-          -DGAME_EXE_DIR="$env:GITHUB_WORKSPACE/stage/Win64"
+        run: |
+          $ws = $env:GITHUB_WORKSPACE -replace '\\','/'
+          cmake -S . -B build -G Ninja `
+            -DCMAKE_BUILD_TYPE=Game__Dev__Win64 `
+            -DGAME_MODS_DIR="$ws/stage/Win64/ue4ss/Mods" `
+            -DGAME_EXE_DIR="$ws/stage/Win64"
 
       - name: Build
-        run: cmake --build build --target ModdingAPI SkinBrowser SignatureBypass TyrModPackager
+        run: cmake --build build --target ModdingAPI SkinBrowser SignatureBypass
 
       - name: Package
         run: |
-          Copy-Item build/stage/TyrModPackager stage/TyrModPackager -Recurse
+          Copy-Item build-packager stage/TyrModPackager -Recurse
           Compress-Archive -Path stage/* -DestinationPath "TyrModdingKit-$env:VERSION.zip"
 
       - name: Create release
