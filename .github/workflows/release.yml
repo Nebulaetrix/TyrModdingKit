@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   release:
-    runs-on: windows-latest   # self-hosted if UE4SS can't build on GitHub's runners
+    runs-on: windows-latest
     timeout-minutes: 90
     env:
       VERSION: ${{ github.ref_name }}
